@@ -3,10 +3,17 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const sendEmail = require("../utils/email");
+const Revoked=require("../models/revokedTokens");
 
 exports.register = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password,role,confirmPassword } = req.body;
+    if(confirmPassword!==password){
+      res.status(409).json({
+        message:"password and confirm password didn't match"
+      })
+    }
+    else{
     const profilePic = req.file ? req.file.filename:null;
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -15,9 +22,10 @@ exports.register = async (req, res) => {
       email,
       password: hashedPassword,
       profilePic,
+      role,
     });
-    res.status(201).json({ user });
-  } catch (error) {
+    res.status(201).json({status:"success",message:"User Succesfully registered" });
+  }} catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
@@ -25,6 +33,8 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("🚀 ~ exports.login= ~ email, password:", email, password)
+    
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -36,7 +46,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ userId: user._id }, "mynameiszubair");
+    const token = jwt.sign({ userId: user._id ,role:user.role}, "mynameiszubair");
     res.json({ token });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -62,7 +72,7 @@ exports.forgetPassword = async (req, res) => {
       const url = `${req.protocol}://${req.get(
         "host"
       )}/auth/resetPassword/${resetToken}`;
-      const message = `use below link to reset your password${url}`;
+      const message = `Dear user Use below link to reset your password  "${url}" Note: This linkis only valid for 10mins`;
       console.log("Reset token:", resetToken);
       await sendEmail({
         email: user.email,
@@ -84,6 +94,8 @@ exports.forgetPassword = async (req, res) => {
 
 exports.resetPassword = async (req, res) => {
   const token = req.params.token;
+  console.log(req.body.password);
+  console.log(token);
   try {
     const user = await User.findOne({ resetPasswordToken: token });
 
@@ -116,3 +128,18 @@ exports.resetPassword = async (req, res) => {
     });
   }
 };
+exports.logout = async(req, res) => {
+
+  const token = req.headers['authorization'].split(' ')[1];
+  await Revoked.create({
+    revTokens:token
+  });
+
+  
+  res.json({message:"logout out succefully"}); 
+};
+
+
+
+
+  

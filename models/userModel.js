@@ -6,7 +6,12 @@ const userSchema = new mongoose.Schema({
   profilePic:{type:String},
   resetPasswordToken:{type:String},
   resetPasswordTokenExp:{type:Date},
-  passwordChangedAt:{type:Date}
+  passwordChangedAt:{type:Date},
+  role:{
+    type:String,
+    enum:["user","admin"],
+    default:"user"
+  }
 });
 
 const User = mongoose.model("User", userSchema);
